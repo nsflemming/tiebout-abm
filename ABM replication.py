@@ -61,7 +61,7 @@ class SchellingModel(Model):
             self.running = False
 
 
-model = SchellingModel(10, 10, .6, .4, 3)
+model = SchellingModel(10, 10, .6, .4, 3)  # height, width, density, minority %, homophily
 
 while model.running and model.schedule.steps < 100:
     model.step()
