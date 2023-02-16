@@ -26,6 +26,8 @@ class SchellingAgent(Agent):
             self.model.happy += 1  # update model, tell model that have one more happy agent
 
 
+
+
 # create model
 class SchellingModel(Model):
     # grid height & width, how much of grid is filled w/ agents, what prop minority, what prop need to not move
@@ -61,9 +63,9 @@ class SchellingModel(Model):
             self.running = False
 
 
-model = SchellingModel(10, 10, .6, .4, 3)  # height, width, density, minority %, homophily
+model = SchellingModel(10, 10, .6, .9, 3)  # height, width, density, minority %, homophily
 
-while model.running and model.schedule.steps < 100:
+while model.running and model.schedule.steps < 10:
     model.step()
 
 print(model.schedule.steps)
