@@ -14,8 +14,8 @@ class multigridmodel(Model):
         self.width = width
         self.schedule = RandomActivation(self)  # schedule for which agent moves when
         self.grid = MultiGrid(width, height, torus=True)  # set torus so no edge
-        # self.happy = 0  # start at 0 happy, will go through and check if agents happy
-        # self.datacollector = DataCollector({"happy": lambda m: m.happy})  # pull # of happy agents
+        self.gap = 10  # start at 0 gap, will check agent city gap
+        self.datacollector = DataCollector({"gap": lambda m: m.gap})  # pull # of happy agents
         self.running = True  # whether ABM is still running
         #  create resident agents
         for i in range(self.num_residents):
@@ -34,6 +34,12 @@ class multigridmodel(Model):
             agent = City(cell, self)  # agent w/ given params
             #couldn't add cities to the schedule for some reason, maybe need 2 schedules?
             self.grid.place_agent(agent, (x, y))  # place agent on grid
+    def step(self):  # run model, has agent move and update
+        self.gap = 10
+        self.schedule.step()
+        self.datacollector.collect(self)  # collect data at each step, from instance of class
+        if self.gap < 2:  # check if gap is less than some value
+            self.running = False
 
 class Resident(Agent):
     def __init__(self, id, model):  # unique id, model,
@@ -44,23 +50,20 @@ class Resident(Agent):
         #neighboring cities to iterate over
         neighborcities = self.model.grid.neighbor_iter(
             self.pos,
-            moore=True,
-            include_center=True,
-            radius=1)  # iterate over all neighbors of pos of current agent
+            moore=True)
+            # include_center=True,
+            # radius=1)  # iterate over all neighbors of pos of current agent
         ##  spending gap comparison
-        currentgap = 3 #  initialize current gap?
+        #currentgap = 3 #  initialize current gap?
         for city in neighborcities: #  How do I do this without iterating through all the neighbors?
             if city.pos == self.pos:
                 currentgap = self.preference - city.spending #  check current gap between spending and preferences
-                print(currentgap)
-        newgap = currentgap + 1  # initialize new gap? auto greater than current gap, so not moving is default
-        for city in neighborcities:
-            if city.pos != self.pos:
+            elif city.pos != self.pos:
                 newgap = self.preference - city.spending #  check gaps for other cities
-                print(newgap)
                 if newgap < currentgap: #  if find a city that's a better match...
                     self.model.grid.move_agent(self, pos = city.pos)  # move self to new city
-                    print(self.pos)
+        print(currentgap)
+        self.model.gap = currentgap
 
 class City(Agent):
     def __init__(self, id, model):  # id, model
@@ -70,5 +73,16 @@ class City(Agent):
 
 model = multigridmodel(1, 3, 3)  # residents, height, width. One city is made per cell
 
+for step in range(10):
+    model.step()
+    print('step')
+
+print(model.schedule.steps)
+model_out = model.datacollector.get_model_vars_dataframe()
+model_out.gap.plot()
+
+
 while model.running and model.schedule.steps < 10:
     model.step()
+    print('step')
+
