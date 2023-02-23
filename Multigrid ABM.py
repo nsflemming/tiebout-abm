@@ -8,32 +8,37 @@ import random
 
 #  initialize model
 class multigridmodel(Model):
-    def __init__(self, residents, height, width):
+    def __init__(self, residents, height, width, city_spending_range, resident_preference_range):
         self.num_residents = residents
         self.height = height
         self.width = width
+        self.city_spending_range = city_spending_range
+        self.resident_preference_range = resident_preference_range
         self.schedule = RandomActivation(self)  # schedule for which agent moves when
         self.grid = MultiGrid(width, height, torus=True)  # set torus so no edge
-        self.gap = 10  # start at 0 gap, will check agent city gap
-        self.datacollector = DataCollector({"gap": lambda m: m.gap})  # pull # of happy agents
+        self.gap = 10  # start at 10 spending-preference gap, will check agent city gap
+        self.datacollector = DataCollector({"gap": lambda m: m.gap})  # pull preference spending gap
         self.running = True  # whether ABM is still running
         #  create resident agents
         for i in range(self.num_residents):
             #  set place on grid (random)
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
-            agent = Resident(i, self)  # agent w/ given params
-            self.schedule.add(agent)  # add agent to schedule
-            self.grid.place_agent(agent, (x, y))  # place agent on grid
+            resident = Resident(i, self, self.resident_preference_range[i])  # agent w/ given params
+            self.grid.place_agent(resident, (x, y))  # place agent on grid
+            self.schedule.add(resident)  # add agent to schedule
+            resident.step()
 
         #  Create city agents
+        k=1
         for cell in self.grid.coord_iter():  # iterate through grid coords
             # set place on grid (sequentially fill every cell)
             x = cell[1]
             y = cell[2]
-            agent = City(cell, self)  # agent w/ given params
+            city = City(cell, self, self.city_spending_range[k])  # agent w/ given params
             #couldn't add cities to the schedule for some reason, maybe need 2 schedules?
-            self.grid.place_agent(agent, (x, y))  # place agent on grid
+            self.grid.place_agent(city, (x, y))  # place agent on grid
+            k=k+1
     def step(self):  # run model, has agent move and update
         self.gap = 10
         self.schedule.step()
@@ -42,13 +47,26 @@ class multigridmodel(Model):
             self.running = False
 
 class Resident(Agent):
-    def __init__(self, id, model):  # unique id, model,
+    def __init__(self, id, model, preference):  # unique id, model,
         super().__init__(id, model)  # super lets you take args from other classes, in this case model
-        #  randomize preference
-        self.preference = random.randint(0,3)
-    def step(self):  #  each step of model, agent can do stuff
+        self.preference = preference
+        self.current_city = None
+
+    def step(self):
+        current_spending = self.current_city.spending_level
+        neighbor_spending = []
         #neighboring cities to iterate over
-        neighborcities = self.model.grid.neighbor_iter(
+        for neighbor in self.model.grid.neighbor_iter(self.current_city.pos, moore = True):
+            if isinstance(neighbor, City):
+                neighbor_spending.append(neighbor.spending_level)
+        closest_spending = min(neighbor_spending, key=lambda x: abs(x-self.preference)) #find smallest spending gap
+        if abs(closest_spending-self.preference) <= abs(current_spending-self.preference):
+            candidates = [neighbor for neighbor in self.model.grid.neighbor_iter(self.current_city.pos, moore=True) if isinstance(neighbor, City) and neighbor.spending_level == closest_spending]
+            if candidates:
+                new_city = random.choice(candidates)
+                self.model.grid.move_agent(self, new_city.pos)
+                self.current_city = new_city
+       ''' neighborcities = self.model.grid.neighbor_iter(
             self.pos,
             moore=True)
             # include_center=True,
@@ -64,14 +82,16 @@ class Resident(Agent):
                     self.model.grid.move_agent(self, pos = city.pos)  # move self to new city
         print(currentgap)
         self.model.gap = currentgap
+        '''
 
 class City(Agent):
-    def __init__(self, id, model):  # id, model
+    def __init__(self, id, model, spending_level):  # id, model
         super().__init__(id, model)
         #  randomize spending (same range as preference)
-        self.spending = random.randint(0,3)
+        self.spending_level = spending_level
 
-model = multigridmodel(1, 3, 3)  # residents, height, width. One city is made per cell
+model = multigridmodel(1, 3, 3, [1,2,3,4,5,6,7,8,9],[1,2,3])  # residents, height, width, city spending range, resident pref range
+# one city is made per cell
 
 for step in range(10):
     model.step()
