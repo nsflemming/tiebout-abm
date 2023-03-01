@@ -2,7 +2,7 @@
 #  Agent Based Modeling package imports
 from mesa import Model, Agent
 from mesa.time import RandomActivation
-from mesa.space import SingleGrid, MultiGrid
+from mesa.space import MultiGrid
 from mesa.datacollection import DataCollector
 import random
 
@@ -14,10 +14,10 @@ class Resident(Agent):
 
     def step(self):
         #current_spending = self.current_city.spending_level
-        neighbor_spending = [] #doesn't work if neighbor spending starts as empty
-        current_spending = 0 #doesn't work if variable is unassigned before for loop
+        neighbor_spending = []
+        current_spending = 100 #doesn't work if variable is unassigned before for loop
         #neighboring cities to iterate over
-        for neighbor in self.model.grid.neighbor_iter(self.pos, moore = True):
+        for neighbor in self.model.grid.iter_neighbors(self.pos, moore = True):
             if isinstance(neighbor, City) and neighbor.pos == self.pos: #set current city and current spending
                 self.current_city = neighbor #current city = neighbor with same position
                 current_spending = self.current_city.spending_level #current spending = that city's spending
@@ -25,31 +25,13 @@ class Resident(Agent):
                 neighbor_spending.append(neighbor.spending_level)
         closest_spending = min(neighbor_spending, key=lambda x: abs(x-self.preference)) #find smallest spending gap
         if abs(closest_spending-self.preference) < abs(current_spending-self.preference): #if there's a city with a smaller gap than the current one...
-            candidates = [neighbor for neighbor in self.model.grid.neighbor_iter(self.pos, moore=True)
+            candidates = [neighbor for neighbor in self.model.grid.iter_neighbors(self.pos, moore=True)
                           if isinstance(neighbor, City) and neighbor.spending_level == closest_spending]
             if candidates:
                 new_city = random.choice(candidates)
                 self.model.grid.move_agent(self, new_city.pos)
                 self.current_city = new_city
         self.model.gap += abs(self.current_city.spending_level-self.preference)  # update model, add spending gap to model tally
-
-       ''' neighborcities = self.model.grid.neighbor_iter(
-            self.pos,
-            moore=True)
-            # include_center=True,
-            # radius=1)  # iterate over all neighbors of pos of current agent
-        ##  spending gap comparison
-        #currentgap = 3 #  initialize current gap?
-        for city in neighborcities: #  How do I do this without iterating through all the neighbors?
-            if city.pos == self.pos:
-                currentgap = self.preference - city.spending #  check current gap between spending and preferences
-            elif city.pos != self.pos:
-                newgap = self.preference - city.spending #  check gaps for other cities
-                if newgap < currentgap: #  if find a city that's a better match...
-                    self.model.grid.move_agent(self, pos = city.pos)  # move self to new city
-        print(currentgap)
-        self.model.gap = currentgap
-        '''
 
 class City(Agent):
     def __init__(self, id, model, spending_level):  # id, model, spending level
@@ -78,10 +60,9 @@ class multigridmodel(Model):
             resident = Resident(i, self, self.resident_preference_range[i])  # agent w/ given params
             self.grid.place_agent(resident, (x, y))  # place agent on grid
             self.schedule.add(resident)  # add agent to schedule
-            resident.step()
 
         #  Create city agents
-        k=1
+        k=0
         for cell in self.grid.coord_iter():  # iterate through grid coords
             # set place on grid (sequentially fill every cell)
             x = cell[1]
@@ -98,20 +79,20 @@ class multigridmodel(Model):
             self.running = False
 
 
+if __name__ == '__main__':
+    model = multigridmodel(1, 3, 3, [1,2,3,4,5,6,7,8,9],[1,2,3])  # residents, height, width, city spending range, resident pref range
+#    one city is made per cell
 
-model = multigridmodel(1, 3, 3, [1,2,3,4,5,6,7,8,9],[1,2,3])  # residents, height, width, city spending range, resident pref range
-# one city is made per cell
+    for step in range(10):
+        model.step()
+        print('step')
 
-for step in range(10):
-    model.step()
-    print('step')
-
-print(model.schedule.steps)
-model_out = model.datacollector.get_model_vars_dataframe()
-model_out.gap.plot()
+    print(model.schedule.steps)
+    model_out = model.datacollector.get_model_vars_dataframe()
+    model_out.gap.plot()
 
 
-while model.running and model.schedule.steps < 10:
-    model.step()
-    print('step')
+    while model.running and model.schedule.steps < 10:
+        model.step()
+        print('step')
 
