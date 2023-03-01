@@ -5,6 +5,7 @@ from mesa.time import RandomActivation
 from mesa.space import MultiGrid
 from mesa.datacollection import DataCollector
 import random
+import numpy as np
 
 class Resident(Agent):
     def __init__(self, id, model, preference):  # unique id, model,
@@ -32,6 +33,7 @@ class Resident(Agent):
                 self.model.grid.move_agent(self, new_city.pos)
                 self.current_city = new_city
         self.model.gap += abs(self.current_city.spending_level-self.preference)  # update model, add spending gap to model tally
+        print(self.model.gap)
 
 class City(Agent):
     def __init__(self, id, model, spending_level):  # id, model, spending level
@@ -80,7 +82,14 @@ class multigridmodel(Model):
 
 
 if __name__ == '__main__':
-    model = multigridmodel(1, 3, 3, [1,2,3,4,5,6,7,8,9],[1,2,3])  # residents, height, width, city spending range, resident pref range
+    num_res = 3
+    height = 5
+    width = 5
+    num_cities = height*width
+    preference_range = np.arange(1, 10, num_res)
+    spending_range = np.arange(1,10, num_cities)
+
+    model = multigridmodel(num_res, height, width, spending_range, preference_range)  # residents, height, width, city spending range, resident pref range
 #    one city is made per cell
 
     for step in range(10):
