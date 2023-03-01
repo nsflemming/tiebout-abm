@@ -70,9 +70,9 @@ class multigridmodel(Model):
             x = cell[1]
             y = cell[2]
             city = City(cell, self, self.city_spending_range[k])  # agent w/ given params, need another set of unique ids
-            #couldn't add cities to the schedule for some reason, maybe need 2 schedules?
+            # couldn't add cities to the schedule for some reason, maybe need 2 schedules?
             self.grid.place_agent(city, (x, y))  # place agent on grid
-            k=k+1
+            k += 1  # increment spending index
     def step(self):  # run model, has agent move and update
         self.gap = 0 #reset gap
         self.schedule.step() #take step
@@ -82,7 +82,7 @@ class multigridmodel(Model):
 
 
 if __name__ == '__main__':
-    num_res = 3
+    num_res = 5
     height = 10
     width = 10
     num_cities = height*width
