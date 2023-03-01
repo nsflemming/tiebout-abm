@@ -15,9 +15,9 @@ class Resident(Agent):
     def step(self):
         #current_spending = self.current_city.spending_level
         neighbor_spending = []
-        current_spending = 100 #doesn't work if variable is unassigned before for loop
+        current_spending = 999 #doesn't work if variable is unassigned before for loop, set arbitrarily high
         #neighboring cities to iterate over
-        for neighbor in self.model.grid.iter_neighbors(self.pos, moore = True):
+        for neighbor in self.model.grid.iter_neighbors(self.pos, moore = True, include_center=True):
             if isinstance(neighbor, City) and neighbor.pos == self.pos: #set current city and current spending
                 self.current_city = neighbor #current city = neighbor with same position
                 current_spending = self.current_city.spending_level #current spending = that city's spending
@@ -25,7 +25,7 @@ class Resident(Agent):
                 neighbor_spending.append(neighbor.spending_level)
         closest_spending = min(neighbor_spending, key=lambda x: abs(x-self.preference)) #find smallest spending gap
         if abs(closest_spending-self.preference) < abs(current_spending-self.preference): #if there's a city with a smaller gap than the current one...
-            candidates = [neighbor for neighbor in self.model.grid.iter_neighbors(self.pos, moore=True)
+            candidates = [neighbor for neighbor in self.model.grid.iter_neighbors(self.pos, moore=True, include_center=True)
                           if isinstance(neighbor, City) and neighbor.spending_level == closest_spending]
             if candidates:
                 new_city = random.choice(candidates)
@@ -49,7 +49,7 @@ class multigridmodel(Model):
         self.resident_preference_range = resident_preference_range
         self.schedule = RandomActivation(self)  # schedule for which agent moves when
         self.grid = MultiGrid(width, height, torus=True)  # set torus so no edge
-        self.gap = 100  # start at 100 spending-preference gap, will check agent city gap
+        self.gap = 0  # start at 0 spending-preference gap, will check agent city gap
         self.datacollector = DataCollector({"gap": lambda m: m.gap})  # pull preference spending gap
         self.running = True  # whether ABM is still running
         #  create resident agents
@@ -63,7 +63,7 @@ class multigridmodel(Model):
 
         #  Create city agents
         k=0
-        for cell in self.grid.coord_iter():  # iterate through grid coords
+        for cell in self.grid.coord_iter():  # iterate through grid coords, use coords as id so no doubling up with residents
             # set place on grid (sequentially fill every cell)
             x = cell[1]
             y = cell[2]
@@ -72,11 +72,11 @@ class multigridmodel(Model):
             self.grid.place_agent(city, (x, y))  # place agent on grid
             k=k+1
     def step(self):  # run model, has agent move and update
-        self.gap = 100
-        self.schedule.step()
+        self.gap = 0 #reset gap
+        self.schedule.step() #take step
         self.datacollector.collect(self)  # collect data at each step, from instance of class
-        if self.gap < 2:  # check if gap is less than some value
-            self.running = False
+        if self.gap > 0:  # check if gap is greater than some value
+            self.running = False #if gap small enough stop
 
 
 if __name__ == '__main__':
