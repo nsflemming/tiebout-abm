@@ -33,7 +33,7 @@ class Resident(Agent):
                 self.model.grid.move_agent(self, new_city.pos)
                 self.current_city = new_city
         self.model.gap += abs(self.current_city.spending_level-self.preference)  # update model, add spending gap to model tally
-        print(self.model.gap)
+        # print(self.current_city.spending_level-self.preference)
 
 class City(Agent):
     def __init__(self, id, model, spending_level):  # id, model, spending level
@@ -83,22 +83,20 @@ class multigridmodel(Model):
 
 if __name__ == '__main__':
     num_res = 3
-    height = 5
-    width = 5
+    height = 10
+    width = 10
     num_cities = height*width
-    preference_range = np.arange(1, 10, num_res)
-    spending_range = np.arange(1,10, num_cities)
+    preferences = np.random.randint(1,10, num_res)
+    spending_lvls = np.random.randint(1,200, num_cities)
 
-    model = multigridmodel(num_res, height, width, spending_range, preference_range)  # residents, height, width, city spending range, resident pref range
+    model = multigridmodel(num_res, height, width, spending_lvls, preferences)  # residents, height, width, city spending range, resident pref range
 #    one city is made per cell
 
     for step in range(10):
         model.step()
-        print('step')
-
-    print(model.schedule.steps)
-    model_out = model.datacollector.get_model_vars_dataframe()
-    model_out.gap.plot()
+        #print(model.schedule.steps)
+        model_out = model.datacollector.get_model_vars_dataframe()
+        model_out.gap.plot()
 
 
     while model.running and model.schedule.steps < 10:

@@ -79,11 +79,6 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/Multigrid ABM.py</url>
-          <line>20</line>
-          <option name="timeStamp" value="7" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/Multigrid ABM.py</url>
           <line>57</line>
           <option name="timeStamp" value="8" />
         </line-breakpoint>
@@ -101,11 +96,6 @@
           <url>file://$PROJECT_DIR$/Multigrid ABM.py</url>
           <line>69</line>
           <option name="timeStamp" value="13" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/Multigrid ABM.py</url>
-          <line>71</line>
-          <option name="timeStamp" value="14" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/Multigrid ABM.py</url>
