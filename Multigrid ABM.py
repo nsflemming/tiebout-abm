@@ -1,7 +1,7 @@
 '''Nathaniel Flemming 28/2/23'''
 #  Agent Based Modeling package imports
 from mesa import Model, Agent
-from mesa.time import RandomActivation
+from mesa.time import RandomActivation, SimultaneousActivation
 from mesa.space import MultiGrid
 from mesa.datacollection import DataCollector
 import random
@@ -14,7 +14,6 @@ class Resident(Agent):
         self.current_city = None #need to start w/ city at current position
 
     def step(self):
-        #current_spending = self.current_city.spending_level
         neighbor_spending = []
         current_spending = 999 #doesn't work if variable is unassigned before for loop, set arbitrarily high
         #neighboring cities to iterate over
@@ -40,6 +39,15 @@ class City(Agent):
         super().__init__(id, model)
         self.spending_level = spending_level
 
+    def step(self):  # City looks at residents in and around it and adjusts spending to match mean preference
+        resident_preferences = []  # initialize resident preferences list
+        for neighbor in self.model.grid.iter_neighbors(self.pos, moore = True, include_center=True):  # find preferences of all nearby residents
+            if isinstance(neighbor, Resident):
+                resident_preferences.append(neighbor.preference) #append to list
+        self.spending_level = np.mean(resident_preferences) # calculate mean preference and set spending equal to it
+
+
+
 
 #  initialize model
 class multigridmodel(Model):
@@ -49,7 +57,8 @@ class multigridmodel(Model):
         self.width = width
         self.city_spending_range = city_spending_range
         self.resident_preference_range = resident_preference_range
-        self.schedule = RandomActivation(self)  # schedule for which agent moves when
+        self.Resschedule = RandomActivation(self)  # schedule for which Resident moves when, they activate randomly
+        self.Cityschedule = SimultaneousActivation(self)  # schedule for which City acts when, they all activate at the same time
         self.grid = MultiGrid(width, height, torus=True)  # set torus so no edge
         self.gap = 0  # start at 0 spending-preference gap, will check agent city gap
         self.datacollector = DataCollector({"gap": lambda m: m.gap})  # pull preference spending gap
@@ -61,21 +70,25 @@ class multigridmodel(Model):
             y = self.random.randrange(self.grid.height)
             resident = Resident(i, self, self.resident_preference_range[i])  # agent w/ given params
             self.grid.place_agent(resident, (x, y))  # place agent on grid
-            self.schedule.add(resident)  # add agent to schedule
+            self.Resschedule.add(resident)  # add agent to Resident schedule
 
         #  Create city agents
         k=0
+        id=i+1 #create unique city ids starting where residents leave off
         for cell in self.grid.coord_iter():  # iterate through grid coords, use coords as id so no doubling up with residents
             # set place on grid (sequentially fill every cell)
             x = cell[1]
             y = cell[2]
-            city = City(cell, self, self.city_spending_range[k])  # agent w/ given params, need another set of unique ids
-            # couldn't add cities to the schedule for some reason, maybe need 2 schedules?
+            city = City(id, self, self.city_spending_range[k])  # agent w/ given params, need another set of unique ids
+            # couldn't add cities to the schedule
             self.grid.place_agent(city, (x, y))  # place agent on grid
+            self.Cityschedule.add(city)  # add agent to City schedule
             k += 1  # increment spending index
+            id += 1  # increment city id index
     def step(self):  # run model, has agent move and update
         self.gap = 0 #reset gap
-        self.schedule.step() #take step
+        self.Resschedule.step() #Residents take step
+        self.Cityschedule.step()  #Cities take step
         self.datacollector.collect(self)  # collect data at each step, from instance of class
         if self.gap > 0:  # check if gap is greater than some value
             self.running = False #if gap small enough stop
