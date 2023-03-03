@@ -41,10 +41,10 @@ class City(Agent):
 
     def step(self):  # City looks at residents in and around it and adjusts spending to match mean preference
         resident_preferences = []  # initialize resident preferences list
-        for neighbor in self.model.grid.iter_neighbors(self.pos, moore = True, include_center=True):  # find preferences of all nearby residents
+        for neighbor in self.model.grid.iter_neighbors(self.pos, moore = True, include_center=True):  # find preferences of all neighboring residents
             if isinstance(neighbor, Resident):
-                resident_preferences.append(neighbor.preference) #append to list
-        self.spending_level = np.mean(resident_preferences) # calculate mean preference and set spending equal to it
+                resident_preferences.append(neighbor.preference)  # append to list
+        self.spending_level = np.mean(resident_preferences)  # calculate mean preference and set spending equal to it
 
 
 
@@ -61,7 +61,8 @@ class multigridmodel(Model):
         self.Cityschedule = SimultaneousActivation(self)  # schedule for which City acts when, they all activate at the same time
         self.grid = MultiGrid(width, height, torus=True)  # set torus so no edge
         self.gap = 0  # start at 0 spending-preference gap, will check agent city gap
-        self.datacollector = DataCollector({"gap": lambda m: m.gap})  # pull preference spending gap
+        self.datacollectorGap = DataCollector({"gap": lambda m: m.gap})
+        #                                      {"spending_level": lambda a: a.spending_level})  # pull preference spending gap from model at each model step
         self.running = True  # whether ABM is still running
         #  create resident agents
         for i in range(self.num_residents):
@@ -75,7 +76,7 @@ class multigridmodel(Model):
         #  Create city agents
         k=0
         id=i+1 #create unique city ids starting where residents leave off
-        for cell in self.grid.coord_iter():  # iterate through grid coords, use coords as id so no doubling up with residents
+        for cell in self.grid.coord_iter():  # iterate through grid coords
             # set place on grid (sequentially fill every cell)
             x = cell[1]
             y = cell[2]
@@ -85,22 +86,25 @@ class multigridmodel(Model):
             self.Cityschedule.add(city)  # add agent to City schedule
             k += 1  # increment spending index
             id += 1  # increment city id index
+        self.datacollectorSpend = DataCollector(
+            agent_reporters={"Spending_levels": ["unique_id","spending_level"]})  # pull city spending levels from each city agent
     def step(self):  # run model, has agent move and update
         self.gap = 0 #reset gap
         self.Resschedule.step() #Residents take step
         self.Cityschedule.step()  #Cities take step
-        self.datacollector.collect(self)  # collect data at each step, from instance of class
+        self.datacollectorGap.collect(self)  # collect data at each step, from instance of class
+        self.datacollectorSpend.collect(self)  # collect data at each step, from instance of class
         if self.gap > 0:  # check if gap is greater than some value
             self.running = False #if gap small enough stop
 
 
 if __name__ == '__main__':
     num_res = 5
-    height = 10
-    width = 10
+    height = 3
+    width = 3
     num_cities = height*width
     preferences = np.random.randint(1,10, num_res)
-    spending_lvls = np.random.randint(1,200, num_cities)
+    spending_lvls = np.random.randint(1,20, num_cities)
 
     model = multigridmodel(num_res, height, width, spending_lvls, preferences)  # residents, height, width, city spending range, resident pref range
 #    one city is made per cell
@@ -108,8 +112,10 @@ if __name__ == '__main__':
     for step in range(10):
         model.step()
         #print(model.schedule.steps)
-        model_out = model.datacollector.get_model_vars_dataframe()
+        model_out = model.datacollectorGap.get_model_vars_dataframe()
         model_out.gap.plot()
+        #city_spending = model.datacollector.get_agent_vars_dataframe()
+        #city_spending.head()
 
 
     while model.running and model.schedule.steps < 10:
