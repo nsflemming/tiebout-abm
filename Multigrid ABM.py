@@ -1,7 +1,7 @@
 '''Nathaniel Flemming 28/2/23'''
 #  Agent Based Modeling package imports
 from mesa import Model, Agent
-from mesa.time import RandomActivation, SimultaneousActivation
+from mesa.time import BaseScheduler, RandomActivation, SimultaneousActivation
 from mesa.space import MultiGrid
 from mesa.datacollection import DataCollector
 import random
@@ -40,6 +40,7 @@ class City(Agent):
         self.spending_level = spending_level
 
     def step(self):  # City looks at residents in and around it and adjusts spending to match mean preference
+        ## need to add a check to skip calculation if there are no residents
         resident_preferences = []  # initialize resident preferences list
         for neighbor in self.model.grid.iter_neighbors(self.pos, moore = True, include_center=True):  # find preferences of all neighboring residents
             if isinstance(neighbor, Resident):
@@ -47,72 +48,69 @@ class City(Agent):
         self.spending_level = np.mean(resident_preferences)  # calculate mean preference and set spending equal to it
 
 
-
-
 #  initialize model
 class multigridmodel(Model):
-    def __init__(self, residents, height, width, city_spending_range, resident_preference_range):
+    def __init__(self, residents, height, width, num_cities, city_spending_range, resident_preference_range):
         self.num_residents = residents
         self.height = height
         self.width = width
+        self.num_cities = num_cities
         self.city_spending_range = city_spending_range
         self.resident_preference_range = resident_preference_range
-        self.Resschedule = RandomActivation(self)  # schedule for which Resident moves when, they activate randomly
-        self.Cityschedule = SimultaneousActivation(self)  # schedule for which City acts when, they all activate at the same time
+        self.schedule = BaseScheduler(self)  # schedule for which Resident and city moves when, they activate in order
+        #self.Cityschedule = SimultaneousActivation(self)  # schedule for which City acts when, they all activate at the same time
         self.grid = MultiGrid(width, height, torus=True)  # set torus so no edge
         self.gap = 0  # start at 0 spending-preference gap, will check agent city gap
-        self.datacollectorGap = DataCollector({"gap": lambda m: m.gap})
+        self.datacollector = DataCollector({"gap": lambda m: m.gap})
         #                                      {"spending_level": lambda a: a.spending_level})  # pull preference spending gap from model at each model step
+        #             agent_reporters={"Spending_levels": ["unique_id","spending_level"]})  # pull city spending levels from each city agent
         self.running = True  # whether ABM is still running
+
+        #  Create city agents
+        for i in range(self.num_cities):
+            # set place on grid (sequentially fill every cell)
+            x = self.random.randrange(self.grid.width)  # set random coordinates
+            y = self.random.randrange(self.grid.height)
+            city = City(i, self, self.city_spending_range[i])  # create cities and assign spending
+            self.grid.place_agent(city, (x, y))  # place agent on grid at random location
+            self.schedule.add(city)  # add agent to schedule
+
         #  create resident agents
+        k = 0
+        id = i + 1  # create unique resident ids starting where cities leave off
         for i in range(self.num_residents):
             #  set place on grid (random)
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
-            resident = Resident(i, self, self.resident_preference_range[i])  # agent w/ given params
+            resident = Resident(id, self, self.resident_preference_range[i])  # agent w/ given params
             self.grid.place_agent(resident, (x, y))  # place agent on grid
-            self.Resschedule.add(resident)  # add agent to Resident schedule
-
-        #  Create city agents
-        k=0
-        id=i+1 #create unique city ids starting where residents leave off
-        for cell in self.grid.coord_iter():  # iterate through grid coords
-            # set place on grid (sequentially fill every cell)
-            x = cell[1]
-            y = cell[2]
-            city = City(id, self, self.city_spending_range[k])  # agent w/ given params, need another set of unique ids
-            # couldn't add cities to the schedule
-            self.grid.place_agent(city, (x, y))  # place agent on grid
-            self.Cityschedule.add(city)  # add agent to City schedule
+            self.schedule.add(resident)  # add agent to schedule
             k += 1  # increment spending index
             id += 1  # increment city id index
-        self.datacollectorSpend = DataCollector(
-            agent_reporters={"Spending_levels": ["unique_id","spending_level"]})  # pull city spending levels from each city agent
+
     def step(self):  # run model, has agent move and update
         self.gap = 0 #reset gap
-        self.Resschedule.step() #Residents take step
-        self.Cityschedule.step()  #Cities take step
-        self.datacollectorGap.collect(self)  # collect data at each step, from instance of class
-        self.datacollectorSpend.collect(self)  # collect data at each step, from instance of class
+        self.schedule.step()  #agents take step
+        self.datacollector.collect(self)  # collect data at each step, from instance of class
         if self.gap > 0:  # check if gap is greater than some value
             self.running = False #if gap small enough stop
 
 
 if __name__ == '__main__':
     num_res = 5
-    height = 3
-    width = 3
+    height = 5
+    width = 5
     num_cities = height*width
     preferences = np.random.randint(1,10, num_res)
     spending_lvls = np.random.randint(1,20, num_cities)
 
-    model = multigridmodel(num_res, height, width, spending_lvls, preferences)  # residents, height, width, city spending range, resident pref range
+    model = multigridmodel(num_res, height, width, num_cities, spending_lvls, preferences)  # residents, height, width, city spending range, resident pref range
 #    one city is made per cell
 
     for step in range(10):
         model.step()
         #print(model.schedule.steps)
-        model_out = model.datacollectorGap.get_model_vars_dataframe()
+        model_out = model.datacollector.get_model_vars_dataframe()
         model_out.gap.plot()
         #city_spending = model.datacollector.get_agent_vars_dataframe()
         #city_spending.head()

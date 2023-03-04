@@ -64,13 +64,13 @@
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/Multigrid ABM.py</url>
-          <line>94</line>
-          <option name="timeStamp" value="14" />
+          <line>33</line>
+          <option name="timeStamp" value="22" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/Multigrid ABM.py</url>
-          <line>95</line>
-          <option name="timeStamp" value="15" />
+          <line>19</line>
+          <option name="timeStamp" value="23" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
