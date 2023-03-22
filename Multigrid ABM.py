@@ -9,29 +9,31 @@ import numpy as np
 import pandas as pd
 
 class Resident(Agent):
-    def __init__(self, id, model, preference):  # unique id, model,
+    def __init__(self, id, model, preferences):  # unique id, model,
         super().__init__(id, model)  # super lets you take args from other classes, in this case model
-        self.preference = preference
+        self.preferences = preferences #assign preference values, store as array?
         self.current_city = None #need to start w/ city at current position
 
     def step(self):
-        neighbor_spending = []
+        neighbor_spending = np.empty([1,4])  # create array to hold neighbor cities' spending levels
+        mean_gap=[]
         current_spending = 999 #doesn't work if variable is unassigned before for loop, set arbitrarily high
         #neighboring cities to iterate over
         for neighbor in self.model.grid.iter_neighbors(self.pos, moore = True, include_center=True):
             if isinstance(neighbor, City) and neighbor.pos == self.pos: #set current city and current spending
                 self.current_city = neighbor #current city = neighbor with same position
-                current_spending = self.current_city.spending_level #current spending = that city's spending
-                self.model.gap += abs(self.current_city.spending_level - self.preference)  # update model, add current spending gap to model tally
+                current_spending = self.current_city.spending_levels #current spending = that city's spending
+                self.model.gap += np.mean(abs(self.current_city.spending_levels - self.preferences))  # update model, add current overall spending gap to model tally
                 # this is the gap between the agent's preference and the city's most recent spending level
                 # the spending level may be different from when the agent first moved here since cities activate second
             if isinstance(neighbor, City):
-                neighbor_spending.append(neighbor.spending_level)
-        closest_spending = min(neighbor_spending, key=lambda x: abs(x-self.preference)) #find smallest spending gap
-        if abs(closest_spending-self.preference) < abs(current_spending-self.preference): #if there's a city with a smaller gap than the current one...
-            candidates = [neighbor for neighbor in self.model.grid.iter_neighbors(self.pos, moore=True, include_center=True)
-                          if isinstance(neighbor, City) and neighbor.spending_level == closest_spending]
-            if candidates:
+                neighbor_spending = neighbor.spending_levels  # get list of neighboring city spending levels
+                mean_gap.append(np.mean(abs(neighbor_spending - self.preferences))) #calculate mean spending gap
+        min_gap = min(mean_gap) #find smallest mean spending gap
+        if min_gap < np.mean(abs(current_spending-self.preferences)): #if there's a city with a smaller overall gap than the current one...
+            candidates = [neighbor for neighbor in self.model.grid.iter_neighbors(self.pos, moore=True, include_center=True)  # find all the cities with the closest spending
+                          if isinstance(neighbor, City) and np.mean(abs(neighbor.spending_levels-self.preferences)) == min_gap]
+            if candidates:  # if there are cities with closer spending, move to one
                 new_city = random.choice(candidates)
                 self.model.grid.move_agent(self, new_city.pos)
                 self.current_city = new_city
@@ -39,29 +41,32 @@ class Resident(Agent):
         # print(self.current_city.spending_level-self.preference)
 
 class City(Agent):
-    def __init__(self, id, model, spending_level):  # id, model, spending level
+    def __init__(self, id, model, spending_lvls):  # id, model, spending level
         super().__init__(id, model)
-        self.spending_level = spending_level
+        self.spending_levels = spending_lvls
 
     def step(self):  # City looks at residents in and around it and adjusts spending to match mean preference, if there are residents
-        resident_preferences = []  # initialize resident preferences list
+        resident_preferences = [] #initialize list to hold preferences, convert to array later
+        num_neighbors = 0
         for neighbor in self.model.grid.iter_neighbors(self.pos, moore = True, include_center=True):  # find preferences of all neighboring residents
             if isinstance(neighbor, Resident):
-                resident_preferences.append(neighbor.preference)  # append to list
+                resident_preferences.append(neighbor.preferences)  # append to list
+                num_neighbors += 1
         if resident_preferences:  # if resident preferences list isn't empty (i.e. there's at least 1 neighboring resident)
-            self.spending_level = np.mean(resident_preferences)  # calc mean preference and set spending equal to it
-        self.model.spending_levels.append(self.spending_level)  # add spending to model level list of spending levels
+            for i in range(1,4):
+                self.spending_levels[i] = np.mean(resident_preferences[:i])  # calc mean preferences over all residents and set spending levels equal to it
+        self.model.spending_levels.append(self.spending_levels)  # add spending to model level array of spending levels
 
 
 #  initialize model
 class multigridmodel(Model):
-    def __init__(self, residents, height, width, num_cities, city_spending_range, resident_preference_range, min_gap):
+    def __init__(self, residents, height, width, num_cities, city_spending_lvls, resident_preferences, min_gap):
         self.num_residents = residents
         self.height = height
         self.width = width
         self.num_cities = num_cities
-        self.city_spending_range = city_spending_range
-        self.resident_preference_range = resident_preference_range
+        self.city_spending_lvls = city_spending_lvls
+        self.resident_preferences = resident_preferences
         self.min_gap = min_gap
         self.schedule = BaseScheduler(self)  # schedule for which Resident and city moves when, they activate in order
         self.grid = MultiGrid(width, height, torus=True)  # set torus so no edge
@@ -76,7 +81,7 @@ class multigridmodel(Model):
             #  set place on grid (random)
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
-            resident = Resident(i, self, self.resident_preference_range[i])  # agent w/ given params
+            resident = Resident(i, self, self.resident_preferences[i])  # agent w/ given params
             self.grid.place_agent(resident, (x, y))  # place agent on grid
             self.schedule.add(resident)  # add agent to schedule
 
@@ -87,7 +92,7 @@ class multigridmodel(Model):
             # set place on grid (sequentially fill every cell)
             x = self.random.randrange(self.grid.width)  # set random coordinates
             y = self.random.randrange(self.grid.height)
-            city = City(id, self, self.city_spending_range[i])  # create cities and assign spending
+            city = City(id, self, self.city_spending_lvls[i])  # create cities and assign spending
             self.grid.place_agent(city, (x, y))  # place agent on grid at random location
             self.schedule.add(city)  # add agent to schedule
             k += 1  # increment spending index
@@ -106,8 +111,8 @@ if __name__ == '__main__':
     height = 5  # height of grid
     width = 5  # width of grid
     num_cities = height*width  # desired number of cities
-    preferences = np.random.randint(1,21, num_res)  # resident preferences
-    spending_lvls = np.random.randint(1,21, num_cities)  # city spending levels
+    preferences = np.random.randint(1,21, size=[num_res,4])  # resident preference array
+    spending_lvls = np.random.randint(1,21, size=[num_cities,4])  # city spending levels array
     min_gap = 5  # minimum total gap between spending and preferences that will make the model stop
 # create model
     model = multigridmodel(num_res, height, width, num_cities, spending_lvls, preferences, min_gap) 
@@ -122,9 +127,9 @@ if __name__ == '__main__':
         model_out.gap.plot()
         # spending levels is a series of identical lists, one for each step with every spending level that occurred
     df = pd.DataFrame(model_out.spending_levels)  # extract spending levels from model output as a data frame
-    row1 = pd.DataFrame(df['spending_levels'].iloc[0])  # get just the first row, since all rows are identical
-    spending_matrix = np.reshape(row1.values, (steps, num_cities))  # reshape that row into a num of steps by num of cities array
-    spending_matrix = np.vstack([spending_lvls, spending_matrix])  # add original spending preferences as first row of matrix
+    #row1 = pd.DataFrame(df['spending_levels'].iloc[0])  # get just the first row, since all rows are identical
+    #spending_matrix = np.reshape(row1.values, (steps, num_cities))  # reshape that row into a num of steps by num of cities array
+    #spending_matrix = np.vstack([spending_lvls, spending_matrix])  # add original spending preferences as first row of matrix
 
     while model.running and model.schedule.steps < steps:  # run until gap falls below a threshold, or for N steps
         model.step()
