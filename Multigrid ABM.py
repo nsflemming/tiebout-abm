@@ -64,12 +64,10 @@ class multigridmodel(Model):
         self.resident_preference_range = resident_preference_range
         self.min_gap = min_gap
         self.schedule = BaseScheduler(self)  # schedule for which Resident and city moves when, they activate in order
-        #self.Cityschedule = SimultaneousActivation(self)  # schedule for which City acts when, they all activate at the same time
         self.grid = MultiGrid(width, height, torus=True)  # set torus so no edge
         self.gap = 0  # start at 0 spending-preference gap, will check agent city gap
         self.spending_levels = [] #create empty spending levels list
         self.datacollector = DataCollector({"gap": lambda m: m.gap, "spending_levels": lambda m: m.spending_levels})
-        #                                   {"spending_levels": lambda a: a.spending_level}) #can't get spending levels cause residents don't have them
         self.running = True  # whether ABM is still running
 
         #  Create Resident agents
