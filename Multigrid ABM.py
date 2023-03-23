@@ -8,6 +8,12 @@ import random
 import numpy as np
 import pandas as pd
 
+def calc_mean_gap(self, neighbor):
+    mean_gap = np.mean(abs(neighbor.spending_levels - self.preferences))  # update model, add current overall spending gap to model tally
+        # this is the gap between the agent's preference and the city's most recent spending level
+        # the spending level may be different from when the agent first moved here since cities activate second
+    return mean_gap
+
 class Resident(Agent):
     def __init__(self, id, model, preferences):  # unique id, model,
         super().__init__(id, model)  # super lets you take args from other classes, in this case model
@@ -15,22 +21,28 @@ class Resident(Agent):
         self.current_city = None #need to start w/ city at current position
 
     def step(self):
-        neighbor_spending = np.empty([1,4])  # create array to hold neighbor cities' spending levels
-        mean_gap=[]
-        current_spending = 999 #doesn't work if variable is unassigned before for loop, set arbitrarily high
+        ''' turn this into a setup function'''
+        neighbor_spending = np.empty([1, 4])  # create array to hold neighbor cities' spending levels
+        mean_gap = []  # initialize list of overall gaps b/t pref and cities' spending
         #neighboring cities to iterate over
-        for neighbor in self.model.grid.iter_neighbors(self.pos, moore = True, include_center=True):
+        for neighbor in self.model.grid.iter_neighbors(self.pos, moore=True, include_center=True):
+            '''take out and turn into function
             if isinstance(neighbor, City) and neighbor.pos == self.pos: #set current city and current spending
                 self.current_city = neighbor #current city = neighbor with same position
-                current_spending = self.current_city.spending_levels #current spending = that city's spending
                 self.model.gap += np.mean(abs(self.current_city.spending_levels - self.preferences))  # update model, add current overall spending gap to model tally
                 # this is the gap between the agent's preference and the city's most recent spending level
                 # the spending level may be different from when the agent first moved here since cities activate second
-            if isinstance(neighbor, City):
-                neighbor_spending = neighbor.spending_levels  # get list of neighboring city spending levels
-                mean_gap.append(np.mean(abs(neighbor_spending - self.preferences))) #calculate mean spending gap
+                '''
+            if isinstance(neighbor, City) and neighbor.pos == self.pos:  # calculate metric for current city
+                current_gap = calc_mean_gap(self, neighbor)
+                #current_gap = np.mean(abs(neighbor.spending_levels - self.preferences))
+            '''take out and turn into function'''
+            if isinstance(neighbor, City):  # calculate metrics for all other neighboring cities
+                mean_gap.append(calc_mean_gap(self, neighbor)) #calculate mean spending gaps
+        self.model.gap += current_gap
         min_gap = min(mean_gap) #find smallest mean spending gap
-        if min_gap < np.mean(abs(current_spending-self.preferences)): #if there's a city with a smaller overall gap than the current one...
+        '''Take this out and turn it into a decision function'''
+        if min_gap < current_gap: #if there's a city with a smaller overall gap than the current one...
             candidates = [neighbor for neighbor in self.model.grid.iter_neighbors(self.pos, moore=True, include_center=True)  # find all the cities with the closest spending
                           if isinstance(neighbor, City) and np.mean(abs(neighbor.spending_levels-self.preferences)) == min_gap]
             if candidates:  # if there are cities with closer spending, move to one
@@ -88,11 +100,10 @@ class multigridmodel(Model):
         #  create City agents
         k = 0
         id = i + 1  # create unique resident ids starting where cities leave off
-        for i in range(self.num_cities):
-            # set place on grid (sequentially fill every cell)
-            x = self.random.randrange(self.grid.width)  # set random coordinates
-            y = self.random.randrange(self.grid.height)
-            city = City(id, self, self.city_spending_lvls[i])  # create cities and assign spending
+        for cell in self.grid.coord_iter():  # iterate through grid coords
+            x = cell[1]
+            y = cell[2]
+            city = City(id, self, self.city_spending_lvls[k])  # create cities and assign spending
             self.grid.place_agent(city, (x, y))  # place agent on grid at random location
             self.schedule.add(city)  # add agent to schedule
             k += 1  # increment spending index
@@ -107,9 +118,9 @@ class multigridmodel(Model):
 
 
 if __name__ == '__main__':
-    num_res = 5  # desired number of residents
-    height = 5  # height of grid
-    width = 5  # width of grid
+    num_res = 1  # desired number of residents
+    height = 4  # height of grid
+    width = 4  # width of grid
     num_cities = height*width  # desired number of cities
     preferences = np.random.randint(1,21, size=[num_res,4])  # resident preference array
     spending_lvls = np.random.randint(1,21, size=[num_cities,4])  # city spending levels array
