@@ -1,4 +1,5 @@
 '''Nathaniel Flemming 28/2/23'''
+import numpy
 #  Agent Based Modeling package imports
 from mesa import Model, Agent
 from mesa.time import BaseScheduler, RandomActivation, SimultaneousActivation
@@ -7,13 +8,22 @@ from mesa.datacollection import DataCollector
 import random
 import numpy as np
 import pandas as pd
+import ResidentFunctions as rf
 
-def calc_mean_gap(self, neighbor):
+'''
+def calc_mean_gap(self, neighbor):  # calculates mean gap over multiple preferences
     mean_gap = np.mean(abs(neighbor.spending_levels - self.preferences))  # update model, add current overall spending gap to model tally
         # this is the gap between the agent's preference and the city's most recent spending level
         # the spending level may be different from when the agent first moved here since cities activate second
     return mean_gap
 
+
+def find_cands_min_mean(self, min_gap):  # creates a list of candidates from neighboring cities based on mean gap and a minimum gap
+    candidates = [neighbor for neighbor in self.model.grid.iter_neighbors(self.pos, moore=True, include_center=True)
+                  # find all the cities with the minimum gap
+                  if isinstance(neighbor, City) and np.mean(abs(neighbor.spending_levels - self.preferences)) == min_gap]
+    return(candidates)
+'''
 class Resident(Agent):
     def __init__(self, id, model, preferences):  # unique id, model,
         super().__init__(id, model)  # super lets you take args from other classes, in this case model
@@ -21,36 +31,23 @@ class Resident(Agent):
         self.current_city = None #need to start w/ city at current position
 
     def step(self):
-        ''' turn this into a setup function'''
-        neighbor_spending = np.empty([1, 4])  # create array to hold neighbor cities' spending levels
+        ''' turn this into a setup function?'''
         mean_gap = []  # initialize list of overall gaps b/t pref and cities' spending
         #neighboring cities to iterate over
         for neighbor in self.model.grid.iter_neighbors(self.pos, moore=True, include_center=True):
-            '''take out and turn into function
-            if isinstance(neighbor, City) and neighbor.pos == self.pos: #set current city and current spending
-                self.current_city = neighbor #current city = neighbor with same position
-                self.model.gap += np.mean(abs(self.current_city.spending_levels - self.preferences))  # update model, add current overall spending gap to model tally
-                # this is the gap between the agent's preference and the city's most recent spending level
-                # the spending level may be different from when the agent first moved here since cities activate second
-                '''
             if isinstance(neighbor, City) and neighbor.pos == self.pos:  # calculate metric for current city
-                current_gap = calc_mean_gap(self, neighbor)
-                #current_gap = np.mean(abs(neighbor.spending_levels - self.preferences))
-            '''take out and turn into function'''
+                current_gap = rf.calc_mean_gap(self, neighbor)  # currently calculating mean gap
             if isinstance(neighbor, City):  # calculate metrics for all other neighboring cities
-                mean_gap.append(calc_mean_gap(self, neighbor)) #calculate mean spending gaps
-        self.model.gap += current_gap
+                mean_gap.append(rf.calc_mean_gap(self, neighbor))  # currently calculating mean gap
+        self.model.gap += current_gap # add current gap to model level tally
         min_gap = min(mean_gap) #find smallest mean spending gap
-        '''Take this out and turn it into a decision function'''
         if min_gap < current_gap: #if there's a city with a smaller overall gap than the current one...
-            candidates = [neighbor for neighbor in self.model.grid.iter_neighbors(self.pos, moore=True, include_center=True)  # find all the cities with the closest spending
-                          if isinstance(neighbor, City) and np.mean(abs(neighbor.spending_levels-self.preferences)) == min_gap]
+            candidates = rf.find_cands_min_mean(self, min_gap)
             if candidates:  # if there are cities with closer spending, move to one
                 new_city = random.choice(candidates)
                 self.model.grid.move_agent(self, new_city.pos)
                 self.current_city = new_city
 
-        # print(self.current_city.spending_level-self.preference)
 
 class City(Agent):
     def __init__(self, id, model, spending_lvls):  # id, model, spending level
