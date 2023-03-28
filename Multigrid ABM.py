@@ -33,16 +33,16 @@ class Resident(Agent):
 
     def step(self):
         ''' turn this into a setup function?'''
-        mean_gap = []  # initialize list of overall gaps b/t pref and cities' spending
+        mean_gaps = []  # initialize list of overall gaps b/t pref and cities' spending
         #neighboring cities to iterate over
         for neighbor in self.model.grid.iter_neighbors(self.pos, moore=True, include_center=True):
             if isinstance(neighbor, City) and neighbor.pos == self.pos:  # calculate metric for current city
                 current_gap = rf.calc_mean_gap(self, neighbor)  # currently calculating mean gap
             if isinstance(neighbor, City):  # calculate metrics for all other neighboring cities
-                mean_gap.append(rf.calc_mean_gap(self, neighbor))  # currently calculating mean gap
-        self.model.gap += current_gap # add current gap to model level tally
-        min_gap = min(mean_gap) #find smallest mean spending gap
-        if min_gap < current_gap: #if there's a city with a smaller overall gap than the current one...
+                mean_gaps.append(rf.calc_mean_gap(self, neighbor))  # currently calculating mean gap
+        self.model.gap += current_gap  # add current gap to model level tally
+        min_gap = min(mean_gaps)  # find smallest spending gap
+        if min_gap < current_gap:  # if there's a city with a smaller overall gap than the current one...
             candidates = rf.find_cands_min_mean(self, min_gap)
             if candidates:  # if there are cities with closer spending, move to one
                 new_city = random.choice(candidates)

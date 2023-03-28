@@ -24,3 +24,7 @@ def calc_mean_prefs (resident_preferences, num_prefs):
     for i in range(1, num_prefs):
         spending_levels[i] = numpy.mean(resident_preferences[:i])
     return spending_levels
+
+#3
+def calc_mean_pref (resident_preferences):
+    return numpy.mean(resident_preferences)
