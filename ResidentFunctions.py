@@ -5,9 +5,9 @@ Resident Functions for the multigrid ABM
 '''
 0.Required packages
 1. Single preference step function 
-2. Mean gap (multi-preference)
+2. calc_mean_gap: Mean gap (multi-preference)
 3. Minimum decision (single preference)
-4. Candidate list, minimum mean gap (multi-preference)
+4. find_cands_min_mean: Candidate list, minimum mean gap (multi-preference)
 '''
 #############################################################
 #0

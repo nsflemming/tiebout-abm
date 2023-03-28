@@ -9,6 +9,7 @@ import random
 import numpy as np
 import pandas as pd
 import ResidentFunctions as rf
+import CityFunctions as cf
 
 '''
 def calc_mean_gap(self, neighbor):  # calculates mean gap over multiple preferences
@@ -56,14 +57,10 @@ class City(Agent):
 
     def step(self):  # City looks at residents in and around it and adjusts spending to match mean preference, if there are residents
         resident_preferences = [] #initialize list to hold preferences, convert to array later
-        num_neighbors = 0
         for neighbor in self.model.grid.iter_neighbors(self.pos, moore = True, include_center=True):  # find preferences of all neighboring residents
-            if isinstance(neighbor, Resident):
-                resident_preferences.append(neighbor.preferences)  # append to list
-                num_neighbors += 1
+            resident_preferences.append(cf.get_prefs(neighbor))  # append to list
         if resident_preferences:  # if resident preferences list isn't empty (i.e. there's at least 1 neighboring resident)
-            for i in range(1,4):
-                self.spending_levels[i] = np.mean(resident_preferences[:i])  # calc mean preferences over all residents and set spending levels equal to it
+            self.spending_levels = cf.calc_mean_prefs(resident_preferences)  # calc mean preferences over all residents and set spending levels equal to it
         self.model.spending_levels.append(self.spending_levels)  # add spending to model level array of spending levels
 
 
@@ -106,7 +103,7 @@ class multigridmodel(Model):
             k += 1  # increment spending index
             id += 1  # increment city id index
 
-    def step(self):  # run model, has agent move and update
+    def step(self):  # run model, has agents move and update
         self.gap = 0 #reset gap
         self.schedule.step()  #agents take step
         self.datacollector.collect(self)  # collect data at each step, from instance of class
