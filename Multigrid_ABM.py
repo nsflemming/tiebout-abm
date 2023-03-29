@@ -79,7 +79,7 @@ if __name__ == '__main__':
         model_out.gap.plot()
         # spending levels is a series of identical lists, one for each step with every spending level that occurred
     df = pd.DataFrame(model_out.spending_levels)  # extract spending levels from model output as a data frame
-    #row1 = pd.DataFrame(df['spending_levels'].iloc[0])  # get just the first row, since all rows are identical
+    row1 = pd.DataFrame(df['spending_levels'].iloc[0])  # get just the first row, since all rows are identical
     #spending_matrix = np.reshape(row1.values, (steps, num_cities))  # reshape that row into a num of steps by num of cities array
     #spending_matrix = np.vstack([spending_lvls, spending_matrix])  # add original spending preferences as first row of matrix
 
