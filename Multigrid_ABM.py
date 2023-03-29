@@ -8,60 +8,7 @@ from mesa.datacollection import DataCollector
 import random
 import numpy as np
 import pandas as pd
-import ResidentFunctions as rf
-import CityFunctions as cf
-
-'''
-def calc_mean_gap(self, neighbor):  # calculates mean gap over multiple preferences
-    mean_gap = np.mean(abs(neighbor.spending_levels - self.preferences))  # update model, add current overall spending gap to model tally
-        # this is the gap between the agent's preference and the city's most recent spending level
-        # the spending level may be different from when the agent first moved here since cities activate second
-    return mean_gap
-
-
-def find_cands_min_mean(self, min_gap):  # creates a list of candidates from neighboring cities based on mean gap and a minimum gap
-    candidates = [neighbor for neighbor in self.model.grid.iter_neighbors(self.pos, moore=True, include_center=True)
-                  # find all the cities with the minimum gap
-                  if isinstance(neighbor, City) and np.mean(abs(neighbor.spending_levels - self.preferences)) == min_gap]
-    return(candidates)
-'''
-class Resident(Agent):
-    def __init__(self, id, model, preferences):  # unique id, model,
-        super().__init__(id, model)  # super lets you take args from other classes, in this case model
-        self.preferences = preferences #assign preference values, store as array?
-        self.current_city = None #need to start w/ city at current position
-
-    def step(self):
-        ''' turn this into a setup function?'''
-        mean_gaps = []  # initialize list of overall gaps b/t pref and cities' spending
-        #neighboring cities to iterate over
-        for neighbor in self.model.grid.iter_neighbors(self.pos, moore=True, include_center=True):
-            if isinstance(neighbor, City) and neighbor.pos == self.pos:  # calculate metric for current city
-                current_gap = rf.calc_mean_gap(self, neighbor)  # currently calculating mean gap
-            if isinstance(neighbor, City):  # calculate metrics for all other neighboring cities
-                mean_gaps.append(rf.calc_mean_gap(self, neighbor))  # currently calculating mean gap
-        self.model.gap += current_gap  # add current gap to model level tally
-        min_gap = min(mean_gaps)  # find smallest spending gap
-        if min_gap < current_gap:  # if there's a city with a smaller overall gap than the current one...
-            candidates = rf.find_cands_min_mean(self, min_gap)
-            if candidates:  # if there are cities with closer spending, move to one
-                new_city = random.choice(candidates)
-                self.model.grid.move_agent(self, new_city.pos)
-                self.current_city = new_city
-
-
-class City(Agent):
-    def __init__(self, id, model, spending_lvls):  # id, model, spending level
-        super().__init__(id, model)
-        self.spending_levels = spending_lvls
-
-    def step(self):  # City looks at residents in and around it and adjusts spending to match mean preference, if there are residents
-        resident_preferences = [] #initialize list to hold preferences, convert to array later
-        for neighbor in self.model.grid.iter_neighbors(self.pos, moore = True, include_center=True):  # find preferences of all neighboring residents
-            resident_preferences.append(cf.get_prefs(neighbor))  # append to list
-        if resident_preferences:  # if resident preferences list isn't empty (i.e. there's at least 1 neighboring resident)
-            self.spending_levels = cf.calc_mean_prefs(resident_preferences)  # calc mean preferences over all residents and set spending levels equal to it
-        self.model.spending_levels.append(self.spending_levels)  # add spending to model level array of spending levels
+import Agents as ag
 
 
 #  initialize model
@@ -77,7 +24,7 @@ class multigridmodel(Model):
         self.schedule = BaseScheduler(self)  # schedule for which Resident and city moves when, they activate in order
         self.grid = MultiGrid(width, height, torus=True)  # set torus so no edge
         self.gap = 0  # start at 0 spending-preference gap, will check agent city gap
-        self.spending_levels = [] #create empty spending levels list
+        self.spending_levels = [] #create empty spending levels list to track updated spending levels
         self.datacollector = DataCollector({"gap": lambda m: m.gap, "spending_levels": lambda m: m.spending_levels})
         self.running = True  # whether ABM is still running
 
@@ -87,7 +34,7 @@ class multigridmodel(Model):
             #  set place on grid (random)
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
-            resident = Resident(i, self, self.resident_preferences[i])  # agent w/ given params
+            resident = ag.Resident(i, self, self.resident_preferences[i])  # agent w/ given params
             self.grid.place_agent(resident, (x, y))  # place agent on grid
             self.schedule.add(resident)  # add agent to schedule
 
@@ -97,7 +44,7 @@ class multigridmodel(Model):
         for cell in self.grid.coord_iter():  # iterate through grid coords
             x = cell[1]
             y = cell[2]
-            city = City(id, self, self.city_spending_lvls[k])  # create cities and assign spending
+            city = ag.City(id, self, self.city_spending_lvls[k])  # create cities and assign spending
             self.grid.place_agent(city, (x, y))  # place agent on grid at random location
             self.schedule.add(city)  # add agent to schedule
             k += 1  # increment spending index
@@ -144,5 +91,5 @@ if __name__ == '__main__':
     print(model.schedule.steps)  # how many steps did the model take
     df = pd.DataFrame(model_out.spending_levels)  # extract spending levels from model output as a data frame
     row1 = pd.DataFrame(df['spending_levels'].iloc[0])  # get just the first row, since all rows are identical
-    spending_matrix = np.reshape(row1.values, (steps, num_cities))  # reshape that row into a num of steps by num of cities array
-    spending_matrix = np.vstack([spending_lvls, spending_matrix])  # add original spending preferences as first row of matrix
+    #spending_matrix = np.reshape(row1.values, (steps, num_cities))  # reshape that row into a num of steps by num of cities array
+    #spending_matrix = np.vstack([spending_lvls, spending_matrix])  # add original spending preferences as first row of matrix
