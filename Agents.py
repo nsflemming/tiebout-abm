@@ -59,8 +59,8 @@ class City(Agent):
         self.spending_levels = spending_levels
 
     def step(self):  # City looks at residents in and around it and adjusts spending to match mean preference, if there are residents
-        resident_preferences = [] #initialize list to hold preferences, convert to array later
-        for neighbor in self.model.grid.iter_neighbors(self.pos, moore = True, include_center=True): # find preferences of all neighboring residents
+        resident_preferences = [] # initialize list to hold preferences, convert to array later
+        for neighbor in self.model.grid.iter_neighbors(self.pos, moore = True, include_center=True):  # find preferences of all neighboring residents
             if isinstance(neighbor, Resident):  # check if neighbor is a Resident
                 resident_preferences.append(neighbor.preferences)  # append to list
         if resident_preferences:  # if resident preferences list isn't empty (i.e. there's at least 1 neighboring resident)
