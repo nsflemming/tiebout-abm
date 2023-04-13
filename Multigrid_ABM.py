@@ -70,16 +70,20 @@ if __name__ == '__main__':
     model = multigridmodel(num_res, height, width, num_cities, init_spending_lvls, preferences, min_gap)
 #    one city is made per cell (grid width x height)
 
-    steps = 100  # max number of steps the model will take
-    for step in range(10):  # take 10 steps
+    steps = 10  # max number of steps the model will take
+    for step in range(steps):  # take 10 steps
         model.step()
         #print(model.schedule.steps)
         model_out = model.datacollector.get_model_vars_dataframe()
         #print(model_out.gap)
         model_out.gap.plot()
-        # spending levels is a series of identical lists, one for each step with every spending level that occurred
+        '''for a single preference model spending levels is a series of identical lists, 
+        one for each step with every spending level that occurred.
+        For a multi preference model, spending levels is a series of lists of arrays. Each list is identical.
+        Each array is a city's spending levels. The lists lengths are thus the number of cities 
+         times the number of steps taken'''
     df = pd.DataFrame(model_out.spending_levels)  # extract spending levels from model output as a data frame
-    row1 = pd.DataFrame(df['spending_levels'].iloc[0])  # get just the first row, since all rows are identical
+    row1 = pd.DataFrame(df.loc[0,'spending_levels'])  # get just the first row, since all rows are identical
     #spending_matrix = np.reshape(row1.values, (steps, num_cities))  # reshape that row into a num of steps by num of cities array
     #spending_matrix = np.vstack([spending_lvls, spending_matrix])  # add original spending preferences as first row of matrix
 
