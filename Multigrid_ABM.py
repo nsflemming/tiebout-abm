@@ -41,9 +41,9 @@ class multigridmodel(Model):
         #  create City agents
         k = 0
         id = i + 1  # create unique resident ids starting where cities leave off
-        for cell in self.grid.coord_iter():  # iterate through grid coords
-            x = cell[1]
-            y = cell[2]
+        for cell in self.grid.coord_iter():  # iterate through grid coordinates
+            x = cell[1]  # cell's x coordinate
+            y = cell[2]  # cell's y coordinate
             city = ag.City(id, self, self.init_spending_lvls[k])  # create cities and assign spending
             self.grid.place_agent(city, (x, y))  # place agent on grid at random location
             self.schedule.add(city)  # add agent to schedule
