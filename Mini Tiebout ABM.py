@@ -9,7 +9,7 @@ import numpy as np  # math
 import pandas as pd  # data frames for data collector output
 
 
-
+############## Create Resident agent class
 class Resident(Agent):
     def __init__(self, id, model, preference):  # unique id, model, a preference
         super().__init__(id, model)  # super lets you take arguments from other classes, in this case model
@@ -37,6 +37,7 @@ class Resident(Agent):
                 self.current_city = new_city  # set current city to the new city
 
 
+############ Create City agent class
 class City(Agent):
     def __init__(self, id, model, spending_level):  # id, model, spending level
         super().__init__(id, model)
@@ -52,7 +53,7 @@ class City(Agent):
         self.model.spending_levels.append(self.spending_level)  # add spending to model level list of spending levels
 
 
-#  initialize model
+############  Create Model class
 class MiniModel(Model):
     def __init__(self, num_residents, height, width, num_cities, init_spending_levels, preferences, min_gap):
         self.num_residents = num_residents  # desired number of residents
@@ -63,14 +64,14 @@ class MiniModel(Model):
         self.preferences = preferences   # resident preferences
         self.min_gap = min_gap   # minimum total gap between spending and preferences that will make the model stop
         self.schedule = BaseScheduler(self)  # schedule for which Resident and city moves when, they activate in order
-        self.grid = MultiGrid(width, height, torus=True)  # set torus so no edge
-        self.gap = 0  # start at 0 spending-preference gap, will check agent city gap
-        self.spending_levels = []  # create empty spending levels
+        self.grid = MultiGrid(width, height, torus=True)  # create grid, set torus so no edge
+        self.gap = 0  # start at 0 spending-preference gap, will update when stepping
+        self.spending_levels = []  # create empty spending levels list, will fill when stepping
         # data collector to pull information out of the model when it's done running
         self.datacollector = DataCollector({"gap": lambda m: m.gap, "spending_levels": lambda m: m.spending_levels})
         self.running = True  # whether model is still running
 
-        #  Create Resident agents
+        ##  Create Resident agents
         #  Because residents are added to the schedule first, they will move first, since agents activate in order
         for i in range(self.num_residents):
             #  choose random grid coordinates
@@ -80,7 +81,7 @@ class MiniModel(Model):
             self.grid.place_agent(resident, (x, y))  # place agent on grid at random location
             self.schedule.add(resident)  # add agent to schedule
 
-        #  Create City agents
+        ##  Create City agents
         k = 0  # create new variable to increment
         id = i + 1  # create unique City ids starting where Residents leave off
         for cell in self.grid.coord_iter():
@@ -93,6 +94,7 @@ class MiniModel(Model):
             k += 1  # increment spending index
             id += 1  # increment city id
 
+    ## model's step function
     def step(self):  # run model: has agent move, updates gap, checks if gap is small enough to stop
         self.gap = 0  # reset spending-preference gap
         self.schedule.step()   # agents all take a step
@@ -101,58 +103,66 @@ class MiniModel(Model):
             self.running = False  # If the gap between spending and preferences is small enough, stop
 
 
-if __name__ == '__main__':
-    random.seed(123)  # set seed for reproducible randomness
-    np.random.seed(123)  # set seed for reproducible randomness
-    num_residents = 300  # desired number of residents
-    height = 10  # height of grid
-    width = 10  # width of grid
-    num_cities = height*width  # desired number of cities (currently one city per cell)
-    init_spending_levels = np.random.randint(1, 21, num_cities)  # city spending levels
-    preferences = np.random.randint(1,21, num_residents)  # resident preferences
-    min_gap = 5*num_residents  # minimum total gap between spending and preferences that will make the model stop
+############ Set Model Parameters
+random.seed(123)  # set seed for reproducible randomness
+np.random.seed(123)  # set seed for reproducible randomness
+num_residents = 300  # desired number of residents
+height = 10  # height of grid
+width = 10  # width of grid
+num_cities = height*width  # desired number of cities (currently one city per cell)
+init_spending_levels = np.random.randint(1, 21, num_cities)  # city spending levels
+preferences = np.random.randint(1,21, num_residents)  # resident preferences
+min_gap = 5*num_residents  # minimum total gap between spending and preferences that will make the model stop
 # create model
-    model = MiniModel(num_residents, height, width, num_cities, init_spending_levels, preferences, min_gap)
+model = MiniModel(num_residents, height, width, num_cities, init_spending_levels, preferences, min_gap)
 
-    steps = 20  # max number of steps the model will take
-    for step in range(steps):  # take 10 steps
-        model.step()  # model/agents take a step
-        model_out = model.datacollector.get_model_vars_dataframe()  # collect info from model
-        print(model_out.gap)  # print the total gap at that step
-    model_out.gap.plot()  # plot the total gap over time
-    # spending levels is a series of identical lists, one for each step with every spending level that occurred
-    df = pd.DataFrame(model_out.spending_levels)  # extract spending levels from model output as a data frame
-    row1 = pd.DataFrame(df['spending_levels'].iloc[0])  # get just the first row, since all rows are identical
-    spending_matrix = np.reshape(row1.values, (model.schedule.steps, num_cities))  # reshape that row into a num of steps by num of cities array
-    spending_matrix = np.vstack([init_spending_levels, spending_matrix])  # add original spending preferences as first row of matrix
-    spending_df = pd.DataFrame(spending_matrix)  # convert back to data frame
-    spending_df.plot(legend=False, alpha=0.1, color='blue')  # use plotting to show spending levels over time
-    # calculate mean spending and variance in spending at each step
-    spending_summary = pd.DataFrame(zip(spending_df.mean(axis=1), spending_df.var(axis=1)))
-    spending_summary.columns = ['mean', 'variance']  # name columns
-    spending_summary['mean'].plot(color='black')  # plot mean spending
-    spending_summary['variance'].plot()  # plot variance in spending
-    spending_summary['mean'][20]
-    np.mean(preferences)  # compare to mean resident preference
+######## Run model and examine result
+steps = 20  # max number of steps the model will take
 
+## Run model for 20 steps
+for step in range(steps):  # take 20 steps
+    model.step()  # model/agents take a step
+    model_out = model.datacollector.get_model_vars_dataframe()  # collect info from model
+    print(model_out.gap)  # print the total gap at that step
 
+model_out.gap.plot()  # plot the total gap over time
 
-    while model.running and model.schedule.steps < steps:  # run until gap falls below a threshold, or for N steps
-        model.step()
-        model_out = model.datacollector.get_model_vars_dataframe()
-        # print(model_out.gap)
-    print(model.schedule.steps)  # how many steps did the model take
-    model_out.gap.plot()
-    df = pd.DataFrame(model_out.spending_levels)  # extract spending levels from model output as a data frame
-    row1 = pd.DataFrame(df['spending_levels'].iloc[0])  # get just the first row, since all rows are identical
-    spending_matrix = np.reshape(row1.values, (model.schedule.steps, num_cities))  # reshape that row into a num of steps by num of cities array
-    spending_matrix = np.vstack([init_spending_levels, spending_matrix])  # add original spending preferences as first row of matrix
-    spending_df = pd.DataFrame(spending_matrix)  # convert back to data frame
-    spending_df.plot(legend=False, alpha=0.1, color='blue')  # use plotting to show spending levels over time
-    # calculate mean spending and variance in spending at each step
-    spending_summary = pd.DataFrame(zip(spending_df.mean(axis=1), spending_df.var(axis=1)))
-    spending_summary.columns = ['mean', 'variance']  # name columns
-    spending_summary['mean'].plot(color='black')  # plot mean spending
-    spending_summary['variance'].plot()  # plot variance in spending
-    spending_summary['mean'][20]
-    np.mean(preferences)  # compare to mean resident preference
+# spending levels is a series of identical lists, one for each step with every spending level that occurred
+df = pd.DataFrame(model_out.spending_levels)  # extract spending levels from model output as a data frame
+row1 = pd.DataFrame(df['spending_levels'].iloc[0])  # get just the first row, since all rows are identical
+spending_matrix = np.reshape(row1.values, (model.schedule.steps, num_cities))  # reshape that row into a num of steps by num of cities array
+spending_matrix = np.vstack([init_spending_levels, spending_matrix])  # add original spending preferences as first row of matrix
+spending_df = pd.DataFrame(spending_matrix)  # convert back to data frame
+spending_df.plot(legend=False, alpha=0.1, color='blue')  # use plotting to show spending levels over time
+# calculate mean spending and variance in spending at each step
+spending_summary = pd.DataFrame(zip(spending_df.mean(axis=1), spending_df.var(axis=1)))
+spending_summary.columns = ['mean', 'variance']  # name columns
+
+spending_summary['mean'].plot(color='black')  # plot mean spending
+spending_summary['variance'].plot()  # plot variance in spending
+spending_summary['mean'][20]
+np.mean(preferences)  # compare to mean resident preference
+
+## Run model until the gap falls low enough or it reaches 20 steps
+while model.running and model.schedule.steps < steps:  # run until gap falls below a threshold, or for N steps
+    model.step()  # model/agents take a step
+    model_out = model.datacollector.get_model_vars_dataframe()  # collect info from model
+    print(model_out.gap)  # print the total gap at that step
+
+print(model.schedule.steps)  # how many steps did the model take
+model_out.gap.plot()  # plot gap over time
+
+df = pd.DataFrame(model_out.spending_levels)  # extract spending levels from model output as a data frame
+row1 = pd.DataFrame(df['spending_levels'].iloc[0])  # get just the first row, since all rows are identical
+spending_matrix = np.reshape(row1.values, (model.schedule.steps, num_cities))  # reshape that row into a num of steps by num of cities array
+spending_matrix = np.vstack([init_spending_levels, spending_matrix])  # add original spending preferences as first row of matrix
+spending_df = pd.DataFrame(spending_matrix)  # convert back to data frame
+spending_df.plot(legend=False, alpha=0.1, color='blue')  # use plotting to show spending levels over time
+# calculate mean spending and variance in spending at each step
+spending_summary = pd.DataFrame(zip(spending_df.mean(axis=1), spending_df.var(axis=1)))
+spending_summary.columns = ['mean', 'variance']  # name columns
+
+spending_summary['mean'].plot(color='black')  # plot mean spending
+spending_summary['variance'].plot()  # plot variance in spending
+spending_summary['mean'][20]
+np.mean(preferences)  # compare to mean resident preference
