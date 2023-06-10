@@ -116,8 +116,9 @@ min_gap = 5*num_residents  # minimum total gap between spending and preferences 
 # create model
 model = MiniModel(num_residents, height, width, num_cities, init_spending_levels, preferences, min_gap)
 
+
 ######## Run model and examine result
-steps = 20  # max number of steps the model will take
+steps = 10  # max number of steps the model will take
 
 ## Run model for 20 steps
 for step in range(steps):  # take 20 steps
