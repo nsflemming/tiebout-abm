@@ -60,8 +60,8 @@ class multigridmodel(Model):
 
 if __name__ == '__main__':
     num_res = 3  # desired number of residents
-    height = 5  # height of grid
-    width = 5  # width of grid
+    height = 3  # height of grid
+    width = 3  # width of grid
     num_cities = height*width  # desired number of cities
     preferences = np.random.randint(1,21, size=[num_res,4])  # resident preference array
     init_spending_lvls = np.random.randint(1,21, size=[num_cities,4])  # city spending levels array

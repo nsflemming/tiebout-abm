@@ -18,6 +18,7 @@ Agent Classes and Functions for the multigrid ABM
 6. get_prefs: Extract resident preferences from resident neighbors
 7. calc_mean_prefs: (multi-preference) Calculate mean preferences over neighboring residents
 8. calc_mean_pref: (single preference) Calculate mean preference over neighboring residents (just repackages np.mean)
+9. calc_mode_prefs: (multi-preference) Find mode preferences over neighboring residents
 
 '''
 #############################################################
@@ -25,6 +26,7 @@ Agent Classes and Functions for the multigrid ABM
 from mesa import Agent
 import random
 import numpy as np
+from scipy import stats as st #for mode function
 
 ##### 1
 #1.1 Resident Class
@@ -34,6 +36,7 @@ class Resident(Agent):
         self.preferences = preferences #assign preference values, store as array?
         self.current_city = None #need to start w/ city at current position
 
+    '''Make interior of step code vary based on value passed in initialization. I.e. customize behavior of agent class'''
     def step(self):
         ''' turn this into a setup function?'''
         mean_gaps = []  # initialize list of overall gaps b/t pref and cities' spending
@@ -58,14 +61,15 @@ class City(Agent):
         super().__init__(id, model)
         self.spending_levels = spending_levels
 
+    '''Make interior of step code vary based on value passed in initialization. I.e. customize behavior of agent class'''
     def step(self):  # City looks at residents in and around it and adjusts spending to match mean preference, if there are residents
         resident_preferences = [] # initialize list to hold preferences, convert to array later
         for neighbor in self.model.grid.iter_neighbors(self.pos, moore = True, include_center=True):  # find preferences of all neighboring residents
             if isinstance(neighbor, Resident):  # check if neighbor is a Resident
-                resident_preferences.append(neighbor.preferences)  # append to list
+                resident_preferences.append(neighbor.preferences)  # append preferences to list
         if resident_preferences:  # if resident preferences list isn't empty (i.e. there's at least 1 neighboring resident)
             num_prefs = np.size(resident_preferences[0])  # Get the number of preferences in each preference array
-            self.spending_levels = calc_mean_prefs(resident_preferences, num_prefs)  # calc mean preferences over all residents and set spending levels equal to it
+            self.spending_levels = calc_mode_prefs(resident_preferences, num_prefs)  # calc 'optimal' preferences over all residents and set spending levels equal to it
         self.model.spending_levels.append(self.spending_levels)  # add spending to model level array of spending levels
 
 
@@ -110,6 +114,11 @@ def calc_mean_prefs (resident_preferences, num_prefs):
 def calc_mean_pref (resident_preferences):
     return np.mean(resident_preferences)
 
-
-
+# 9. calc_mode_pref: (multi-preference) Find mode preferences over neighboring residents
+def calc_mode_prefs (resident_preferences, num_prefs):
+    spending_levels = [None] * num_prefs  # create empty list to fill with mode preferences
+    for i in range(0, num_prefs):
+        ithelements = [arr[i] for arr in resident_preferences]  # get ith element(list of prefs) of each array
+        spending_levels[i] = st.mode(ithelements)  # take mode of ith elements of the arrays
+    return spending_levels
 
