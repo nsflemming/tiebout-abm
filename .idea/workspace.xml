@@ -5,8 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="66104e1f-063b-489f-bd8c-751ad1eda8f7" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/Visualization.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Agents.py" beforeDir="false" afterPath="$PROJECT_DIR$/Agents.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Multigrid_Tiebout_ABM.py" beforeDir="false" afterPath="$PROJECT_DIR$/Multigrid_Tiebout_ABM.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Visualization.py" beforeDir="false" afterPath="$PROJECT_DIR$/Visualization.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

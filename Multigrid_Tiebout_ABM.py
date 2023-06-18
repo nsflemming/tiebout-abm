@@ -31,10 +31,11 @@ class multigridmodel(Model):
         #  Create Resident agents
         #  Because residents are added to the schedule first, they will move first, since agents activate in order
         for i in range(self.num_residents):
+            id = i  #set id #
             #  set place on grid (random)
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
-            resident = ag.Resident(i, self, self.resident_preferences[i])  # agent w/ given params
+            resident = ag.Resident(id, self, self.resident_preferences[i])  # agent w/ given params
             self.grid.place_agent(resident, (x, y))  # place agent on grid
             self.schedule.add(resident)  # add agent to schedule
 

@@ -69,7 +69,7 @@ class City(Agent):
                 resident_preferences.append(neighbor.preferences)  # append preferences to list
         if resident_preferences:  # if resident preferences list isn't empty (i.e. there's at least 1 neighboring resident)
             num_prefs = np.size(resident_preferences[0])  # Get the number of preferences in each preference array
-            self.spending_levels = calc_mode_prefs(resident_preferences, num_prefs)  # calc 'optimal' preferences over all residents and set spending levels equal to it
+            self.spending_levels = calc_mean_prefs(resident_preferences, num_prefs)  # calc 'optimal' preferences over all residents and set spending levels equal to it
         self.model.spending_levels.append(self.spending_levels)  # add spending to model level array of spending levels
 
 
