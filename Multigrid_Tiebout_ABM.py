@@ -13,13 +13,14 @@ import Agents as ag
 
 #  initialize model
 class multigridmodel(Model):
-    def __init__(self, residents, height, width, num_cities, init_spending_lvls, resident_preferences, min_gap):
+    def __init__(self, residents, height, width, num_cities, init_spending_lvls, resident_preferences, resident_resources, min_gap):
         self.num_residents = residents
         self.height = height
         self.width = width
         self.num_cities = num_cities
         self.init_spending_lvls = init_spending_lvls
         self.resident_preferences = resident_preferences
+        self.resident_resources = resident_resources
         self.min_gap = min_gap
         self.schedule = BaseScheduler(self)  # schedule for which Resident and city moves when, they activate in order
         self.grid = MultiGrid(width, height, torus=True)  # set torus so no edge
@@ -31,11 +32,10 @@ class multigridmodel(Model):
         #  Create Resident agents
         #  Because residents are added to the schedule first, they will move first, since agents activate in order
         for i in range(self.num_residents):
-            id = i  #set id #
             #  set place on grid (random)
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
-            resident = ag.Resident(id, self, self.resident_preferences[i])  # agent w/ given params
+            resident = ag.Resident(i, self, self.resident_preferences[i], self.resident_resources[i])  # agent w/ given params
             self.grid.place_agent(resident, (x, y))  # place agent on grid
             self.schedule.add(resident)  # add agent to schedule
 
@@ -61,20 +61,22 @@ class multigridmodel(Model):
 
 if __name__ == '__main__':
     num_res = 3  # desired number of residents
-    height = 3  # height of grid
-    width = 3  # width of grid
+    height = 5  # height of grid
+    width = 5  # width of grid
     num_cities = height*width  # desired number of cities
-    preferences = np.random.randint(1,21, size=[num_res,4])  # resident preference array
-    init_spending_lvls = np.random.randint(1,21, size=[num_cities,4])  # city spending levels array
+    preferences = np.random.randint(1, 21, size=[num_res, 4])  # resident preference array
+    resources = np.random.randint(0, 2, size=num_res)  # resident resources array (should really be correlated with preferences)
+    init_spending_lvls = np.random.randint(1, 21, size=[num_cities, 4])  # city spending levels array
     min_gap = 5  # minimum total gap between spending and preferences that will make the model stop
+    # (should scale to magnitude of preferences and spending)
 # create model
-    model = multigridmodel(num_res, height, width, num_cities, init_spending_lvls, preferences, min_gap)
+    model = multigridmodel(num_res, height, width, num_cities, init_spending_lvls, preferences, resources, min_gap)
 #    one city is made per cell (grid width x height)
 
     steps = 10  # max number of steps the model will take
     for step in range(steps):  # take 10 steps
         model.step()
-        #print(model.schedule.steps)
+        # print(model.schedule.steps)
         model_out = model.datacollector.get_model_vars_dataframe()
         #print(model_out.gap)
         model_out.gap.plot()

@@ -19,6 +19,8 @@ Agent Classes and Functions for the multigrid ABM
 7. calc_mean_prefs: (multi-preference) Calculate mean preferences over neighboring residents
 8. calc_mean_pref: (single preference) Calculate mean preference over neighboring residents (just repackages np.mean)
 9. calc_mode_prefs: (multi-preference) Find mode preferences over neighboring residents
+10. calc_mean_prefs_weighted (multi-preference) Calculate mean preferences over neighboring residents weighted to 
+    favor residents with more resources
 
 '''
 #############################################################
@@ -31,9 +33,10 @@ from scipy import stats as st #for mode function
 ##### 1
 #1.1 Resident Class
 class Resident(Agent):
-    def __init__(self, id, model, preferences):  # unique id, model,
+    def __init__(self, id, model, preferences, resources):  # unique id, model, preferences, *resources*
         super().__init__(id, model)  # super lets you take args from other classes, in this case model
         self.preferences = preferences #assign preference values, store as array?
+        self.resources = resources
         self.current_city = None #need to start w/ city at current position
 
     '''Make interior of step code vary based on value passed in initialization. I.e. customize behavior of agent class'''
@@ -41,7 +44,8 @@ class Resident(Agent):
         ''' turn this into a setup function?'''
         mean_gaps = []  # initialize list of overall gaps b/t pref and cities' spending
         #neighboring cities to iterate over
-        for neighbor in self.model.grid.iter_neighbors(self.pos, moore=True, include_center=True):
+        # agents with more resources iterate over (look at) more cities
+        for neighbor in self.model.grid.iter_neighbors(self.pos, moore=True, include_center=True, radius=self.resources):
             if isinstance(neighbor, City) and neighbor.pos == self.pos:  # calculate metric for current city
                 current_gap = calc_mean_gap(self, neighbor)  # currently calculating mean gap
             if isinstance(neighbor, City):  # calculate metrics for all other neighboring cities
@@ -69,7 +73,7 @@ class City(Agent):
                 resident_preferences.append(neighbor.preferences)  # append preferences to list
         if resident_preferences:  # if resident preferences list isn't empty (i.e. there's at least 1 neighboring resident)
             num_prefs = np.size(resident_preferences[0])  # Get the number of preferences in each preference array
-            self.spending_levels = calc_mean_prefs(resident_preferences, num_prefs)  # calc 'optimal' preferences over all residents and set spending levels equal to it
+            self.spending_levels = calc_mean_prefs_weighted(resident_preferences, num_prefs)  # calc 'optimal' preferences over all residents and set spending levels equal to it
         self.model.spending_levels.append(self.spending_levels)  # add spending to model level array of spending levels
 
 
@@ -122,3 +126,12 @@ def calc_mode_prefs (resident_preferences, num_prefs):
         spending_levels[i] = st.mode(ithelements)  # take mode of ith elements of the arrays
     return spending_levels
 
+# 10. calc_mean_prefs_weighted (multi-preference) Calculate mean preferences over neighboring residents weighted
+#       to favor residents with more resources
+def calc_mean_prefs_weighted (resident_preferences, num_prefs, resident_resources):
+    spending_levels = [None] * num_prefs # create empty list to fill with weighted mean preferences
+    for i in range(0, num_prefs):
+        ithprefs = [arr[i] for arr in resident_preferences]  # get ith element of each preference array
+        resources = [resident_resources]
+        spending_levels[i] = np.average([ithprefs], weights=[resources])  # take mean of ith elements of the arrays, weighted by resources
+    return spending_levels
